@@ -1,10 +1,18 @@
 let videoPlayer = document.querySelector("video");
 let recordButton = document.querySelector("#record-video");
 let photoButton = document.querySelector("#capture-photo");
+let zoomIn = document.querySelector("#in");
+let zoomOut = document.querySelector("#out");
 let recordingState = false;
 let constraints = { video: true };
 let recordedData;
 let mediaRecorder;
+
+
+let maxZoom = 3;
+let minZoom = 1;
+let currZoom = 1;
+
 
 (async function () {
   let mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -44,25 +52,48 @@ let mediaRecorder;
   });
 
   photoButton.addEventListener("click", capturePhotos);
+
+  zoomIn.addEventListener("click" , function(){
+    if(currZoom + 0.1 <= maxZoom){
+      currZoom += 0.1;
+      videoPlayer.style.transform = `scale(${currZoom})`;
+    }
+  });
+  zoomOut.addEventListener("click" , function(){
+    if(currZoom - 0.1 >= minZoom){
+      currZoom -= 0.1;
+      videoPlayer.style.transform = `scale(${currZoom})`;
+    }
+  });
 })();
+
+
+
+
 
 function saveVideoToFs() {
   console.log("Saving Video");
   // file object in recordedData
   let videoUrl = URL.createObjectURL(recordedData); // convert Blob object into Blob Url
-  console.log(videoUrl);
+  // console.log(videoUrl);
 
-  let aTag = document.createElement("a");
-  aTag.download = "video.mp4";
-  aTag.href = videoUrl;
+  let iv = setInterval( function(){
+    if(db){
+      saveMedia("Video" , videoUrl);
+      clearInterval(iv);
+    }
+  }  , 100 );
+  // let aTag = document.createElement("a");
+  // aTag.download = "video.mp4";
+  // aTag.href = videoUrl;
 
-  console.log(aTag);
-  aTag.click(); // download start for video
+  // console.log(aTag);
+  // aTag.click(); // download start for video
 }
 
 function capturePhotos() {
   photoButton.querySelector("div").classList.add("capture-animate");
-
+  // async
   setTimeout(function(){
     photoButton.querySelector("div").classList.remove("capture-animate");
   } , 1000);
@@ -70,14 +101,22 @@ function capturePhotos() {
   let canvas = document.createElement("canvas");
   canvas.height = videoPlayer.videoHeight;
   canvas.width = videoPlayer.videoWidth;
-
   let ctx = canvas.getContext("2d");
-  ctx.drawImage(videoPlayer, 0, 0);
 
+  // canvas is scaled according to currZoom
+  if(currZoom != 1){
+    ctx.translate(canvas.width/2 , canvas.height/2);
+    ctx.scale(currZoom , currZoom);
+    ctx.translate(-canvas.width/2 , -canvas.height/2)
+  }
+
+  ctx.drawImage(videoPlayer, 0, 0);
   let imageUrl = canvas.toDataURL("image/jpg"); //canvas object => file url String
 
-  let aTag = document.createElement("a");
-  aTag.download = "photo.jpg";
-  aTag.href = imageUrl;
-  aTag.click();
+  let iv = setInterval( function(){
+    if(db){
+      saveMedia("image" , imageUrl);
+      clearInterval(iv);
+    }
+  }  , 100 );
 }
